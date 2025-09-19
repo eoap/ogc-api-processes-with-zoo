@@ -19,6 +19,15 @@ To submit an execution request of a deployed process and monitor it, the OGC API
 | Job list                       | `/jobs`                                      | Retrieves a list of submitted jobs.                                             | Part 1     |
 | Job deletion                   | `/jobs/{jobID}` (DELETE)                     | Cancels and deletes a job.                                                      | Part 1     |
 
+## Install OGC API Client
+
+
+```python
+!pip install 'git+https://github.com/EOEPCA/ogc-api-client.git@develop#subdirectory=src&egg=ogc-api-client' urllib3==2.5.0
+```
+
+## Import dependencies
+
 
 ```python
 import os
@@ -326,7 +335,7 @@ Inspecting the job result using cli
 
 
 ```python
-!aws s3 ls s3://results/{job_id}/{job_id}/{os.path.basename(data["inputs"]["stac_items"][0])}/
+!aws s3 ls --endpoint-url http://eoap-zoo-project-localstack:4566 s3://results/{job_id}/{job_id}/{os.path.basename(data["inputs"]["stac_items"][0])}/
 ```
 
     2025-08-20 13:42:57       3447 LC08_L2SP_044032_20231208_02_T1.json

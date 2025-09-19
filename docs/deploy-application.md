@@ -98,13 +98,6 @@ r = undeploy(app_package_entry_point)
 r.status_code
 ```
 
-
-
-
-    404
-
-
-
 ## OGC Application Package Encoding (application/ogcapppkg+json)
 
 OGC Application Package Encoding (application/ogcapppkg+json): This method allows you to reference the CWL file by providing its location, rather than including the file's content in the request.
@@ -145,9 +138,9 @@ def check_app_package_deployment(app_package_entry_point):
         logger.error(f"Failed to retrieve processes. Status code: {r.status_code}")
         sys.exit(1)
 
-def get_latest_application_package_version(repository_owner, repo_name):
+def get_latest_application_package_version( repo_name):
 
-    url = f"https://api.github.com/repos/{repository_owner}/{repo_name}/releases/latest"
+    url = f"https://api.github.com/repos/eoap/{repo_name}/releases/latest"
     response = requests.get(url)
     response.raise_for_status()  # raise error if request failed
 
@@ -160,10 +153,9 @@ def get_latest_application_package_version(repository_owner, repo_name):
 app_package_entry_point = "water-bodies"
 is_package_deployed = check_app_package_deployment(app_package_entry_point)
 repo_name = "mastering-app-package"
-repository_owner = os.environ.get("REPOSITORY_OWNER", "eoap")
-latest_application_package_version = get_latest_application_package_version(repository_owner, repo_name)
+latest_application_package_version = get_latest_application_package_version(repo_name)
 logger.info(f"Latest version is:  {latest_application_package_version}")
-app_package_url = f"https://github.com/{repository_owner}/mastering-app-package/releases/download/{latest_application_package_version}/app-water-bodies-cloud-native.{latest_application_package_version}.cwl"
+app_package_url = f"https://github.com/eoap/mastering-app-package/releases/download/{latest_application_package_version}/app-water-bodies-cloud-native.{latest_application_package_version}.cwl"
 if not is_package_deployed:
     
     response= app_package_deployment(app_package_entry_point, app_package_url)
