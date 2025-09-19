@@ -7,7 +7,7 @@
     "datePublished": "2022-09-25",
     "dateModified": "2025-08-18",
     "name": "ogc-api-processes-with-zoo",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "description": "The OGC API - Processes standard supports the wrapping of computational tasks into executable processes that can be offered by a server through a Web API and be invoked by a client application. It specifies a processing interface for communicating over a RESTful protocol using JavaScript Object Notation (JSON) encodings. The standard builds on concepts from the OGC Web Processing Service (WPS) 2.0 Interface Standard but provides a more modern approach, allowing for interaction with web resources using the OpenAPI specification. Importantly, it does not require implementation of a WPS interface.",
     "developmentStatus": "active",
     "downloadUrl": "https://github.com/eoap/ogc-api-processes-with-zoo/releases/tag/0.1.0",
@@ -30,24 +30,25 @@
     ],
     "author": [
         {
-            "@type": "Person",
-            "givenName": "Jane",
-            "familyName": "Doe",
-            "email": "jane.doe@acme.earth",
+            "@type": "Organization",
+            "givenName": "Terradue",
+            "familyName": "Terradue",
+            "email": "fabrice.brito@terradue.com",
             "affiliation": {
                 "@type": "Organization",
-                "name": "ACME"
+                "name": "Terradue"
             }
         },
         {
             "@type": "Person",
-            "givenName": "John",
-            "familyName": "Doe",
-            "email": "john.doe@acme.earth",
+            "givenName": "Gerald",
+            "familyName": "Fenoy",
+            "email": "gerald.fenoy@geolabs.fr",
             "affiliation": {
                 "@type": "Organization",
-                "name": "ACME"
+                "name": "Geolabs"
             }
         }
+        
     ]
 }
