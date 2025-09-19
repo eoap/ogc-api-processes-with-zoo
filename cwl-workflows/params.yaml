@@ -1,0 +1,45 @@
+stac_api_endpoint:
+  url:
+    value: https://planetarycomputer.microsoft.com/api/stac/v1
+  headers: []
+
+search_request:
+  collections: 
+  - landsat-c2-l2
+  datetime_interval:
+    start:
+      value: "2023-10-14T18:00:00"
+    end:
+      value: "2023-10-21T18:59:59"
+  bbox: 
+  - -121.399
+  - 39.834
+  - -120.74
+  - 40.472
+  
+  filter-lang: cql2-json
+  filter:
+    {
+        "op": "and",
+        "args":
+          [
+            { "op": "<=", "args": [{ "property": "eo:cloud_cover" }, 70] },
+            { "op": ">=", "args": [{ "property": "eo:cloud_cover" }, 0] },
+            { "op": "eq" , "args": [{ "property": "proj:epsg"}, 32610]}
+          ],
+      }
+
+
+processes_api_endpoint:
+  url:
+    value: http://zoo-project-dru-service/acme/ogc-api/
+  headers: []
+
+execute_request:
+  process_id: "water-bodies"
+  inputs:
+    aoi: "-121.399,39.834,-120.74,40.472"
+    bands:
+    - "green"
+    - "nir08"
+    epsg: "EPSG:4326"
