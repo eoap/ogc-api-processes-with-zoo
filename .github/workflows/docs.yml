@@ -5,7 +5,7 @@ on:
       - develop
       - main
       - master
-      - ESAEOEPCA-316
+      - branch-1
     paths:
       - 'README.md'
       - 'docs/**'

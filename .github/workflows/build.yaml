@@ -3,7 +3,7 @@ on:
   push:
     branches:
       - main
-      - ESAEOEPCA-316
+      - branch-1
     paths:
       - containers/**
       - .github/workflows/build.yaml
