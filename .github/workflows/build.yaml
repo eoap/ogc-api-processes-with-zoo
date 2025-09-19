@@ -1,0 +1,158 @@
+name: build
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - containers/**
+      - .github/workflows/build.yaml
+      - cwl-workflows/*.cwl
+      - codemeta.json
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.x
+      - run: pip install cwltool
+      - run: |
+          cwl_list="$(ls cwl-workflows/*.cwl)"
+          echo "$cwl_list"
+      - run: |
+          for var in $cwl_list; do 
+            echo "**********  Validating $var  **********"
+            cwltool --validate $var
+            echo "**********  Validation of $var is successful  **********"
+          done
+
+  version:
+    needs: validate
+    runs-on: ubuntu-latest
+    outputs:
+      app-version: ${{ steps.set-version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v2
+      - run: echo "APP_VERSION=$(jq -r .version codemeta.json)" >> $GITHUB_ENV
+      - run: echo app version is $APP_VERSION
+      - id: set-version
+        run: echo "::set-output name=version::$APP_VERSION"
+  
+  container-build:
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Log in to GitHub Container Registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      - name: Build & push images
+        run: |
+          OWNER=${{ github.repository_owner }}
+          REPO=${{ github.event.repository.name }}
+          VERSION=${{ needs.version.outputs.app-version }}
+
+          if [ -z "$VERSION" ]; then
+            echo "ERROR: VERSION is empty! Check the version job."
+            exit 1
+          fi
+
+          echo "Scanning for Dockerfiles..."
+          for docker_file_path in $(find containers -name Dockerfile); do
+            context_dir=$(dirname "$docker_file_path")
+            step_name=$(basename "$context_dir")
+            IMAGE_NAME=ghcr.io/$OWNER/$REPO/$step_name
+
+            echo "Building $IMAGE_NAME:$VERSION from $docker_file_path"
+            docker build -t $IMAGE_NAME:$VERSION -f "$docker_file_path" "$context_dir"
+            docker tag $IMAGE_NAME:$VERSION $IMAGE_NAME:latest
+            docker push $IMAGE_NAME:$VERSION
+            docker push $IMAGE_NAME:latest
+          done
+
+  create-release:
+    needs:
+      - container-build
+      - version
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      
+    steps:
+      - name: Create GitHub release
+        id: create_release
+        uses: actions/create-release@v1
+        with:
+          draft: false
+          prerelease: false
+          release_name: ${{ needs.version.outputs.app-version }}
+          tag_name: ${{ needs.version.outputs.app-version }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+  publish-artifacts:
+    needs:
+      - create-release
+      - version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Log in to GitHub Container Registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      - name: Update CWL Docker image digests
+        run: |
+          OWNER=${{ github.repository_owner }}
+          REPO=${{ github.event.repository.name }}
+          VERSION=${{ needs.version.outputs.app-version }}
+
+          for docker_file_path in $(find containers -name Dockerfile); do
+            context_dir=$(dirname "$docker_file_path")
+            step_name=$(basename "$context_dir")
+            IMAGE_NAME=ghcr.io/$OWNER/$REPO/$step_name
+            tag="$IMAGE_NAME:$VERSION"
+            echo $tag
+            docker pull ${tag}
+            shatag=$(docker inspect "$tag" | yq -r '.[0]["RepoDigests"][0]')
+            for cwl_file in cwl-workflows/*.cwl; do
+              yq -i eval "(
+                .\$graph[] 
+                | select(.id == \"$step_name\") 
+                | .requirements[] 
+                | select(.class == \"DockerRequirement\")
+                ).dockerPull = \"$shatag\"" "$cwl_file"
+            done
+          done
+
+      - name: Update CWL metadata from codemeta.json
+        run: |
+          VERSION=$(jq -r .version codemeta.json)
+          for cwl in $(ls cwl-workflows/*.cwl); do 
+            r=$(jq -r ".codeRepository" codemeta.json) \
+            yq -i eval '."s:codeRepository" = {"URL" : env(r)}' $cwl
+            v=$VERSION \
+            yq -i eval '."s:softwareVersion" = env(v)' $cwl
+            n=$(jq -r '(.author[0].givenName + " " + .author[0].familyName)' codemeta.json) \
+            e=$(jq -r '.author[0].email' codemeta.json) \
+            a=$(jq -r '.author[0].affiliation["name"]' codemeta.json) \
+            yq eval -i  '."s:author" += [{"class": "s:Person", "s.name": env(n), "s.email": env(e), "s.affiliation": env(a)}]' $cwl
+          done
+
+      - name: Prepare downloads folder
+        run: |
+          rm -rf downloads
+          mkdir downloads
+          for cwl_file in cwl-workflows/*.cwl; do
+            base=$(basename $cwl_file .cwl)  # remove .cwl extension
+            cp $cwl_file downloads/${base}.${{ needs.version.outputs.app-version }}.cwl
+          done
+          ls downloads/
+
+      - name: Upload CWL artifacts to GitHub release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          for f in downloads/*.cwl; do
+            echo "Uploading $f ..."
+            gh release upload ${{ needs.version.outputs.app-version }} "$f" --clobber
+          done
